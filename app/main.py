@@ -9,7 +9,15 @@ class Post(BaseModel):
     title: str
     content: str
     published: bool = False
-    rating: Optional[int] = None
+
+    try:
+        conn = psycopg2.connect(host = 'localhost', database = 'TestDatabase', user = 'postgres', password = '1234', cursor_factory = RealDictCursor)
+        cursor = conn.cursor()
+        print("Database connection was successfull")
+    except Exception as error:
+        print("Connecting to database failed")
+        print(f"Error: {error}")
+
 
 
 def find_post(id):
@@ -30,30 +38,33 @@ def root():
 
 @app.get("/posts")
 def get_posts():
-    return {"data": my_posts}
+    cursor.execute("""select * from posts""")
+    post = cursor.fetchall()
+    return {"data": post}
 
 @app.post("/posts", status_code=status.HTTP_201_CREATED)
 def create_posts(post: Post):
     post_dict = post.dict()
     post_dict['id'] = randrange(0, 10000)
-    my_posts.append(post_dict)
-    return {"data": post_dict}
-
-@app.get("/posts/{id}")
+    cursor.execute("""insert into posts (title, content, published) values (%s, %s, %s) returning * """, (post.title, post.content, post.published))
+    new_post = cursor.fetchone()
+    conn.commit()
+    return {"data": new_post}
 def get_post(id: int, response: Response):
-    post = find_post(id)
+    cursor.execute("""select * from posts where id = %s""", (str(id),))
+    post = cursor.fetchone()
     if not post:
         raise HTTPException(status_code = status.HTTP_404_NOT_FOUND, detail = f'post with id: {id} is not found')
     return {"post_detail": post}
 
 @app.delete("/posts/{id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_post(id: int):
-    index = find_index_post(id)
-    
-    if index == None:
-        raise HTTPException(status=status.HTTP_404_NOT_FOUND, detail = f'Post with {id} does not exist')
-    my_posts.pop(index)
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    cursor.execute("""delete from posts where id = %s returning *""", (str(id),))
+    deleted_post = cursor.fetchone()
+    conn.commit()
+    if deleted_post == None:
+        raise HTTPException(status_code = status.HTTP_404_NOT_FOUND, detail = f'Post with {id} does not exist')
+    return Response(status_code = status.HTTP_204_NO_CONTENT)
 
 @app.put("/posts/{id}")
 def update_post(id: int, post: Post):
