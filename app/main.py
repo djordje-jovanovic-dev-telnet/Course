@@ -8,12 +8,10 @@ from psycopg2.extras import RealDictCursor
 
 app = FastAPI()
 
-
 class Post(BaseModel):
     title: str
-    content: str
+    content: str = ""
     published: bool = False
-
 
 while True:
     try:
@@ -32,36 +30,30 @@ while True:
         print(f"Error: {error}")
         time.sleep(2)
 
-
 my_posts = [
     {"title": "title of post 1", "content": "content of post 1", "id": 1},
     {"title": "title of post 2", "content": "content of post 2", "id": 2},
 ]
-
 
 def find_post(id):
     for p in my_posts:
         if p["id"] == id:
             return p
 
-
 def find_index_post(id):
     for i, p in enumerate(my_posts):
         if p["id"] == id:
             return i
 
-
 @app.get("/")
 def root():
     return {"message": "Hey"}
-
 
 @app.get("/posts")
 def get_posts():
     cursor.execute("""select * from posts""")
     post = cursor.fetchall()
     return {"data": post}
-
 
 @app.post("/posts", status_code=status.HTTP_201_CREATED)
 def create_posts(post: Post):
@@ -73,6 +65,11 @@ def create_posts(post: Post):
     conn.commit()
     return {"data": new_post}
 
+@app.get("/posts/last_post")
+def get_last_posts():
+    cursor.execute("""select * from posts where created_at = (select max(created_at) from posts) limit 1""")
+    post = cursor.fetchall()
+    return {"data": post}
 
 @app.get("/posts/{id}")
 def get_post(id: int, response: Response):
@@ -85,7 +82,6 @@ def get_post(id: int, response: Response):
         )
     return {"post_detail": post}
 
-
 @app.delete("/posts/{id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_post(id: int):
     cursor.execute("""delete from posts where id = %s returning *""", (str(id),))
@@ -97,7 +93,6 @@ def delete_post(id: int):
             detail=f"Post with {id} does not exist",
         )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
-
 
 @app.put("/posts/{id}")
 def update_post(id: int, post: Post):
@@ -120,7 +115,6 @@ def update_post(id: int, post: Post):
         )
     return {"data": updated_post}
 
-
 @app.patch("/posts/{id}")
 def update_post_title(id: int, post: Post):
     cursor.execute(
@@ -132,10 +126,10 @@ def update_post_title(id: int, post: Post):
     )
     updated_post = cursor.fetchone()
     conn.commit()
-
     if updated_post is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Post with id {id} does not exist",
         )
     return {"data": updated_post}
+
