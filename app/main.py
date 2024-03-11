@@ -1,17 +1,17 @@
 import time
 from typing import Optional
-from fastapi import FastAPI, Response, status, HTTPException
+from fastapi import FastAPI, Response, status, HTTPException, Depends
 from pydantic import BaseModel
 from random import randrange
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from app import models, schemas
+from app.database import engine, get_db
+from sqlalchemy.orm import Session
+
+models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
-
-class Post(BaseModel):
-    title: str
-    content: str = ""
-    published: bool = False
 
 while True:
     try:
@@ -49,20 +49,23 @@ def find_index_post(id):
 def root():
     return {"message": "Hey"}
 
+@app.get("/sqlalchemy")
+def test_posts(db: Session = Depends(get_db)):
+    posts = db.query(models.Post).all()
+    print(posts)
+    return {"data": posts}
+
 @app.get("/posts")
-def get_posts():
-    cursor.execute("""select * from posts""")
-    post = cursor.fetchall()
-    return {"data": post}
+def get_posts(db: Session = Depends(get_db)):
+    posts = db.query(models.Post).all()
+    return {"data": posts}
 
 @app.post("/posts", status_code=status.HTTP_201_CREATED)
-def create_posts(post: Post):
-    cursor.execute(
-        """insert into posts (title, content, published) values (%s, %s, %s) returning * """,
-        (post.title, post.content, post.published),
-    )
-    new_post = cursor.fetchone()
-    conn.commit()
+def create_posts(post: schemas.PostCreate, db: Session = Depends(get_db)):
+    new_post = models.Post(**post.dict())
+    db.add(new_post)
+    db.commit()
+    db.refresh(new_post)
     return {"data": new_post}
 
 @app.get("/posts/last_post")
@@ -72,9 +75,9 @@ def get_last_posts():
     return {"data": post}
 
 @app.get("/posts/{id}")
-def get_post(id: int, response: Response):
-    cursor.execute("""select * from posts where id = %s""", (str(id),))
-    post = cursor.fetchone()
+def get_post(id: int, db: Session = Depends(get_db)):
+    post = db.query(models.Post).filter(models.Post.id == id).first()
+    print(post)
     if not post:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -83,40 +86,32 @@ def get_post(id: int, response: Response):
     return {"post_detail": post}
 
 @app.delete("/posts/{id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_post(id: int):
-    cursor.execute("""delete from posts where id = %s returning *""", (str(id),))
-    deleted_post = cursor.fetchone()
-    conn.commit()
-    if deleted_post == None:
+def delete_post(id: int, db: Session = Depends(get_db)):
+    post = db.query(models.Post).filter(models.Post.id == id)
+    if post.first() == None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Post with {id} does not exist",
         )
+    post.delete(synchronize_session = False)
+    db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 @app.put("/posts/{id}")
-def update_post(id: int, post: Post):
-    cursor.execute(
-        """update posts set title = %s, content = %s, published = %s where id = %s returning *""",
-        (
-            post.title,
-            post.content,
-            post.published,
-            str(id),
-        ),
-    )
-    updated_post = cursor.fetchone()
-    conn.commit()
-
+def update_post(id: int, post: schemas.PostCreate, db: Session = Depends(get_db)):
+    post_query = db.query(models.Post).filter(models.Post.id == id)
+    updated_post = post_query.first()
     if updated_post == None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Post with {id} does not exist",
         )
-    return {"data": updated_post}
+    post_query.update(post.dict(), synchronize_session=False)
+    db.commit()
+    return {"data": post_query.first()}
 
 @app.patch("/posts/{id}")
-def update_post_title(id: int, post: Post):
+def update_post_title(id: int, post: schemas.PostBase):
     cursor.execute(
         """UPDATE posts SET title = %s WHERE id = %s RETURNING *""",
         (
