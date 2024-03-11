@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from random import randrange
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from sqlalchemy import desc
 from app import models, schemas
 from app.database import engine, get_db
 from sqlalchemy.orm import Session
@@ -30,21 +31,6 @@ while True:
         print(f"Error: {error}")
         time.sleep(2)
 
-my_posts = [
-    {"title": "title of post 1", "content": "content of post 1", "id": 1},
-    {"title": "title of post 2", "content": "content of post 2", "id": 2},
-]
-
-def find_post(id):
-    for p in my_posts:
-        if p["id"] == id:
-            return p
-
-def find_index_post(id):
-    for i, p in enumerate(my_posts):
-        if p["id"] == id:
-            return i
-
 @app.get("/")
 def root():
     return {"message": "Hey"}
@@ -67,6 +53,12 @@ def create_posts(post: schemas.PostCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_post)
     return {"data": new_post}
+
+@app.get("/posts/orm_last_post")
+def get_last_post_orm(db: Session = Depends(get_db)):
+    last_post = db.query(models.Post).order_by(desc(models.Post.id)).first()
+    return {"data": last_post}
+    
 
 @app.get("/posts/last_post")
 def get_last_posts():
