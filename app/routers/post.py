@@ -1,13 +1,12 @@
 from typing import Optional, List
 from fastapi import FastAPI, Response, status, HTTPException, Depends, APIRouter
-from pydantic import BaseModel
 from random import randrange
-import psycopg2
-from psycopg2.extras import RealDictCursor
 from sqlalchemy import desc
+from app import oauth2
 from ..import models, schemas, utils
 from ..database import engine, get_db
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, Query
+from sqlalchemy import or_, func
 
 router = APIRouter(
     prefix = "/posts",
@@ -15,22 +14,30 @@ router = APIRouter(
 )
 
 @router.get("/", response_model=List[schemas.Post])
-def get_posts(db: Session = Depends(get_db)):
+def get_posts(db: Session = Depends(get_db), current_user: int = Depends(oauth2.get_current_user)):
     posts = db.query(models.Post).all()
     return posts
 
 @router.post("/", status_code=status.HTTP_201_CREATED, response_model=schemas.Post)
-def create_posts(post: schemas.PostCreate, db: Session = Depends(get_db)):
+def create_posts(post: schemas.PostCreate, db: Session = Depends(get_db), current_user: int = Depends(oauth2.get_current_user)):
     new_post = models.Post(**post.model_dump())
     db.add(new_post)
     db.commit()
     db.refresh(new_post)
     return new_post
 
-@router.get("/get_last_post", response_model=schemas.Post)
+#updated with subquery  
+@router.get("/get_last_post")
 def get_last_post(db: Session = Depends(get_db)):
-    last_post = db.query(models.Post).order_by(desc(models.Post.id)).first()
+    subquery = db.query(func.max(models.Post.id)).scalar_subquery()
+    last_post = db.query(models.Post).filter(models.Post.id == subquery).first()
     return last_post
+
+@router.get("/condition/{id}")
+def get_with_condition(id: int, db: Session = Depends(get_db)):
+    
+    post = db.query(func.concat(models.Post.content," ",models.Post.id).label("Novo")).filter(models.Post.id > id).limit(2).all()    
+    return post
 
 @router.get("/{id}", response_model=schemas.Post)
 def get_post(id: int, db: Session = Depends(get_db)):
@@ -44,7 +51,7 @@ def get_post(id: int, db: Session = Depends(get_db)):
     return post
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_post(id: int, db: Session = Depends(get_db)):
+def delete_post(id: int, db: Session = Depends(get_db), user_id: int = Depends(oauth2.get_current_user)):
     post = db.query(models.Post).filter(models.Post.id == id)
     if post.first() == None:
         raise HTTPException(
@@ -56,7 +63,7 @@ def delete_post(id: int, db: Session = Depends(get_db)):
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 @router.put("/{id}", response_model=schemas.Post)
-def update_post(id: int, post: schemas.PostBase, db: Session = Depends(get_db)):
+def update_post(id: int, post: schemas.PostBase, db: Session = Depends(get_db), current_user: int = Depends(oauth2.get_current_user)):
     post_query = db.query(models.Post).filter(models.Post.id == id)
     updated_post = post_query.first()
     if updated_post == None:

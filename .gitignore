@@ -3,6 +3,10 @@ __pycache__/*
 *.py[cod]
 *$py.class
 /app/__pycache__/*
+/app/routers/__pycache__/*
+**/__pycache__/*
+**/__pycache__
+__pycache__
 
 # C extensions
 *.so

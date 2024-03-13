@@ -1,7 +1,4 @@
-from typing import Optional, List
 from fastapi import FastAPI, Response, status, HTTPException, Depends, APIRouter
-from pydantic import BaseModel
-from random import randrange
 from sqlalchemy import desc
 from .. import models, schemas, utils
 from .. database import  get_db
