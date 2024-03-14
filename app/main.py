@@ -1,15 +1,9 @@
-import time
-from typing import Optional, List
-from fastapi import FastAPI, Response, status, HTTPException, Depends
-from pydantic import BaseModel
-from random import randrange
-import psycopg2
-from psycopg2.extras import RealDictCursor
-from sqlalchemy import desc
-from app import models, schemas, utils
+from fastapi import FastAPI, Depends
+from app import models
 from app.database import engine, get_db
 from sqlalchemy.orm import Session
 from .routers import post, user, auth
+from .config import settings
 
 models.Base.metadata.create_all(bind=engine)
 
