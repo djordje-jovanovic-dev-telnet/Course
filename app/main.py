@@ -1,12 +1,9 @@
 from fastapi import FastAPI, Depends
 from app import models
-from app.database import engine, get_db
+from app.database import get_db
 from sqlalchemy.orm import Session
 from .routers import post, user, auth, vote
 from .config import settings
-
-
-models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
