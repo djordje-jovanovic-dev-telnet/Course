@@ -27,7 +27,7 @@ class PostCreate(PostBase):
     pass
 
 
-class Post(BaseModel):
+class Post(PostBase):
     id: int
     created_at: datetime
     owner_id: int
