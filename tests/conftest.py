@@ -96,6 +96,11 @@ def test_posts(test_user, session, test_user_):
             "content": "forth content",
             "owner_id": test_user_["id"],
         },
+        {
+            "title": "fifth title",
+            "content": "fifth content",
+            "owner_id": test_user_["id"],
+        }
     ]
 
     def create_post_model(p):

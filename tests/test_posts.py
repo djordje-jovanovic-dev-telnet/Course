@@ -123,3 +123,8 @@ def test_update_post_non_exist(authorized_client, test_posts):
     }
     res = authorized_client.put("/posts/999999999999999", json = data)
     assert res.status_code == 404
+
+def test_get_last_post(authorized_client, test_posts):
+    res = authorized_client.get("/posts/get_last_post")
+    print(res.json())
+    assert res.status_code == 200
