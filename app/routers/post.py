@@ -21,6 +21,11 @@ def get_posts(
         .group_by(models.Post.id)
         .all()
     )
+    print(
+        db.query(models.Post, func.count(models.Vote.post_id).label("votes"))
+        .join(models.Vote, models.Vote.post_id == models.Post.id, isouter=True)
+        .group_by(models.Post.id)
+    )
     return posts
 
 

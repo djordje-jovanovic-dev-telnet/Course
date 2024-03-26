@@ -1,16 +1,22 @@
-from typing import Annotated, Optional
+from typing import Annotated, List, Optional
 from pydantic import BaseModel, ConfigDict, EmailStr
 from pydantic.types import conint
 from datetime import datetime
 
 
-class UserOut(BaseModel):
+class UserData(BaseModel):
     id: int
     email: EmailStr
-    created_at: datetime
 
     class Config:
         from_attributes = True
+
+
+class UserOut(BaseModel):
+    id: int
+    email: EmailStr
+    followers: int
+    following: int
 
 
 class PostPatch(BaseModel):
@@ -48,6 +54,8 @@ class PostOut(BaseModel):
 class UserCreate(BaseModel):
     email: EmailStr
     password: str
+    followers: int = 0
+    following: int = 0
 
 
 class UserLogin(BaseModel):
@@ -68,3 +76,17 @@ class TokenData(BaseModel):
 class Vote(BaseModel):
     post_id: int
     dir: Annotated[int, conint(le=1)]
+
+
+class Follow(BaseModel):
+    followed_user_id: int
+    dir: Annotated[int, conint(le=1)]
+
+
+class UserFollow(BaseModel):
+    id: int
+    email: EmailStr
+    following_count: int
+    followers_count: int
+    following: list[UserData] = []
+    followers: list[UserData] = []

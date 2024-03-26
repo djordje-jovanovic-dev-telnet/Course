@@ -14,6 +14,8 @@ def vote(
     db: Session = Depends(get_db),
     current_user: int = Depends(oauth2.get_current_user),
 ):
+    print(models.Post.id)
+    print(vote.post_id)
     post = db.query(models.Post).filter(models.Post.id == vote.post_id).first()
     if not post:
         raise HTTPException(

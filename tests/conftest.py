@@ -41,9 +41,19 @@ def client(session):
     yield TestClient(app)
 
 
+# @pytest.fixture
+# def test_user(client):
+#     user_data = {"email": "jovica@gmail.com", "password": "1234"}
+#     res = client.post("/users/", json=user_data)
+#     assert res.status_code == 201
+#     new_user = res.json()
+#     new_user["password"] = user_data["password"]
+#     return new_user
+
+
 @pytest.fixture
-def test_user(client):
-    user_data = {"email": "jovica@gmail.com", "password": "1234"}
+def test_user_(client):
+    user_data = {"email": "djordje@gmail.com", "password": "1234"}
     res = client.post("/users/", json=user_data)
     assert res.status_code == 201
     new_user = res.json()
@@ -62,13 +72,12 @@ def test_user_(client):
 
 
 @pytest.fixture
-def token(test_user):
-    return create_access_token({"user_id": test_user["id"]})
+def token(test_follow_users_data):
+    return create_access_token({"user_id": test_follow_users_data[0]["id"]})
 
 
 @pytest.fixture
 def authorized_client(client, token):
-    # client.header = {**client.headers, "Authorization": f"Bearer{token}"}
     client.headers.update({"Authorization": f"Bearer {token}"})
     return client
 
@@ -100,7 +109,7 @@ def test_posts(test_user, session, test_user_):
             "title": "fifth title",
             "content": "fifth content",
             "owner_id": test_user_["id"],
-        }
+        },
     ]
 
     def create_post_model(p):

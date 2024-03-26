@@ -29,6 +29,8 @@ class User(Base):
     created_at = Column(
         TIMESTAMP(timezone=True), nullable=False, server_default=text("now()")
     )
+    followers = Column(Integer, nullable=False)
+    following = Column(Integer, nullable=False)
 
 
 class Vote(Base):
@@ -38,4 +40,14 @@ class Vote(Base):
     )
     post_id = Column(
         Integer, ForeignKey("posts.id", ondelete="CASCADE"), primary_key=True
+    )
+
+
+class Follow(Base):
+    __tablename__ = "followers"
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    follow_user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
     )
